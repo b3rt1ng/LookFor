@@ -1,0 +1,10 @@
+[package]
+name = "lookfor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+regex = "1.8"
+colored = "2.0"
+walkdir = "2.3"
