@@ -31,8 +31,22 @@ To compile and use `lookfor`, you need to have Rust installed.
    lookfor "bash" . --noshow
    ```
 
+# Usage
+```
+  -f, --find <FIND>        Keywords to search for (comma-separated)
+  -p, --path <PATH>        Directory or file to search in
+  -n, --noshow             Do not display errors for unreadable files
+  -m, --maxsize <MAXSIZE>  Maximum file size to analyze in MB [default: 0]
+  -o, --output <OUTPUT>    Output file for results
+  -h, --help               Print help
+  -V, --version            Print version
+```
+### Examples:
+```bash
+lookfor -f bash,file -p . -m 200
+# search for the words file and bash within the current directory and with a max file size of 200MO
+```
+
 ## TODO
-- output generation
-- multiple words
 - multiple paths
-- stringify binary
+- not case sensitive argument
