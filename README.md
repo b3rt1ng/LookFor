@@ -35,3 +35,4 @@ To compile and use `lookfor`, you need to have Rust installed.
 - output generation
 - multiple words
 - multiple paths
+- stringify binary
