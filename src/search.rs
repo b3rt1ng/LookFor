@@ -21,7 +21,7 @@ pub fn search_in_file(
     if maxsize > 0 && file_size_mb > maxsize {
         writeln!(
             writer,
-            "{}: fichier dépassant {} Mo, on passe",
+            "{}: file exceeds {} MB, skipping",
             file_path.display().to_string().blue().bold(),
             maxsize
         )
