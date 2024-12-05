@@ -1,90 +1,47 @@
+mod args;
+mod search;
+mod writer;
+mod utils;
+
+use args::Args;
+use search::{search_in_directory, search_in_file};
+use writer::MultiWriter;
+use std::io;
+use std::io::Write;
 use clap::Parser;
-use std::fs;
-use std::io::{self, BufRead, BufReader};
-use walkdir::WalkDir;
-use colored::*;
-use std::path::{Path, PathBuf};
-use regex::Regex;
-
-#[derive(Parser)]
-struct Args {
-    keyword: String,
-
-    paths: Vec<PathBuf>,
-
-    #[clap(long)]
-    noshow: bool,
-}
 
 fn main() {
     let args = Args::parse();
 
-    for path in &args.paths {
-        if path.is_dir() {
-            println!("Searching in directory: {}", path.display());
-            search_in_directory(&args.keyword, path, args.noshow);
-        } else if path.is_file() {
-            println!("Searching in file: {}", path.display());
-            if let Err(e) = search_in_file(&args.keyword, path, args.noshow) {
-                if !args.noshow {
-                    eprintln!("Error with file {}: {}", path.display(), e);
-                }
-            }
-        }
-    }
-}
+    let mut multi_writer = MultiWriter::new();
+    multi_writer.add(io::stdout());
 
-fn search_in_directory(keyword: &str, dir_path: &Path, noshow: bool) {
-    for entry in WalkDir::new(dir_path)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
-        let file_path = entry.path();
-        if let Err(e) = search_in_file(keyword, file_path, noshow) {
-            if !noshow {
-                eprintln!("Error with file {}: {}", file_path.display(), e);
-            }
-        }
-    }
-}
-
-fn search_in_file(keyword: &str, file_path: &Path, noshow: bool) -> io::Result<()> {
-    let file = fs::File::open(file_path)?;
-    let reader = BufReader::new(file);
-
-    for (line_num, line_result) in reader.lines().enumerate() {
-        match line_result {
-            Ok(line) => {
-                if let Some(highlighted) = highlight_keyword(&line, keyword) {
-                    println!(
-                        "{}:{} {}",
-                        file_path.display().to_string().blue().bold(),
-                        (line_num + 1).to_string().yellow().bold(),
-                        highlighted
-                    );
-                }
-            }
-            Err(_) => {
-                if !noshow {
-                    eprintln!(
-                        "Error with file {}: unreadable content",
-                        file_path.display()
-                    );
-                }
-                break;
-            }
-        }
+    if let Some(output_path) = &args.output {
+        let file = std::fs::File::create(output_path).expect("Unable to create output file");
+        multi_writer.add(file);
     }
 
-    Ok(())
-}
+    let keywords: Vec<String> = args.find.split(',').map(String::from).collect();
 
-fn highlight_keyword(line: &str, keyword: &str) -> Option<String> {
-    let regex = Regex::new(keyword).ok()?;
-    if regex.is_match(line) {
-        Some(line.replace(keyword, &keyword.red().bold().to_string()))
-    } else {
-        None
+    if args.path.is_dir() {
+        writeln!(
+            &mut multi_writer,
+            "Searching in directory: {}",
+            args.path.display()
+        )
+        .unwrap();
+        search_in_directory(&keywords, &args.path, args.noshow, args.maxsize, &mut multi_writer);
+    } else if args.path.is_file() {
+        writeln!(
+            &mut multi_writer,
+            "Searching in file: {}",
+            args.path.display()
+        )
+        .unwrap();
+        if let Err(e) = search_in_file(&keywords, &args.path, args.noshow, args.maxsize, &mut multi_writer) {
+            if !args.noshow {
+                eprintln!("Error with the file {}: {}", args.path.display(), e);
+            }
+        }
     }
 }
