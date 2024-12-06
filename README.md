@@ -28,7 +28,7 @@ To compile and use `lookfor`, you need to have Rust installed.
    sudo cp target/release/lookfor /usr/local/bin/
 
    #run it
-   lookfor "bash" . --noshow
+   lookfor -f bash -p . --noshow
    ```
 
 # Usage
