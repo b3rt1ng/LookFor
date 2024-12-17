@@ -24,4 +24,8 @@ pub struct Args {
     /// Output file for results
     #[clap(short = 'o', long = "output")]
     pub output: Option<PathBuf>,
+
+    /// Omit certain file types (extensions) separated by commas
+    #[arg(short = 'e', long = "omit", value_delimiter = ',')]
+    pub omit: Option<Vec<String>>,
 }
