@@ -7,6 +7,7 @@ use regex::Regex;
 use walkdir::WalkDir;
 use colored::*;
 use std::io::Write;
+use std::collections::HashMap;
 
 pub fn search_in_file(
     keywords: &[String],
@@ -14,6 +15,7 @@ pub fn search_in_file(
     noshow: bool,
     maxsize: usize,
     writer: &mut MultiWriter,
+    keyword_counts: &mut HashMap<String, usize>, // Nouveau paramètre
 ) -> io::Result<()> {
     let metadata = fs::metadata(file_path)?;
     let file_size_mb = metadata.len() as usize / (1024 * 1024);
@@ -38,6 +40,13 @@ pub fn search_in_file(
         match line_result {
             Ok(line) => {
                 if let Some(highlighted) = highlight_keywords(&line, keywords) {
+                    // Incrémenter le compteur pour chaque mot trouvé
+                    for keyword in keywords {
+                        if line.contains(keyword) {
+                            *keyword_counts.entry(keyword.clone()).or_insert(0) += 1;
+                        }
+                    }
+
                     writeln!(
                         writer,
                         "{}:{} {}",
@@ -56,7 +65,7 @@ pub fn search_in_file(
                         file_path.display()
                     );
                 }
-                found_any |= search_binary_content(file_path, keywords, writer);
+                found_any |= search_binary_content(file_path, keywords, writer, keyword_counts);
                 break;
             }
         }
@@ -69,7 +78,12 @@ pub fn search_in_file(
     Ok(())
 }
 
-fn search_binary_content(file_path: &Path, keywords: &[String], writer: &mut dyn Write) -> bool {
+fn search_binary_content(
+    file_path: &Path,
+    keywords: &[String],
+    writer: &mut dyn Write,
+    keyword_counts: &mut HashMap<String, usize>, // Nouveau paramètre
+) -> bool {
     let content = match fs::read(file_path) {
         Ok(c) => c,
         Err(_) => return false,
@@ -83,6 +97,13 @@ fn search_binary_content(file_path: &Path, keywords: &[String], writer: &mut dyn
     for sequence in printable_regex.find_iter(&content_str) {
         let line = sequence.as_str();
         if let Some(highlighted) = highlight_keywords(line, keywords) {
+            // Incrémenter le compteur pour chaque mot trouvé
+            for keyword in keywords {
+                if line.contains(keyword) {
+                    *keyword_counts.entry(keyword.clone()).or_insert(0) += 1;
+                }
+            }
+
             writeln!(
                 writer,
                 "{}: {}",
@@ -103,6 +124,7 @@ pub fn search_in_directory(
     noshow: bool,
     maxsize: usize,
     writer: &mut MultiWriter,
+    keyword_counts: &mut HashMap<String, usize>, // Nouveau paramètre
 ) {
     for entry in WalkDir::new(dir_path)
         .into_iter()
@@ -110,10 +132,18 @@ pub fn search_in_directory(
         .filter(|e| e.file_type().is_file())
     {
         let file_path = entry.path();
-        if let Err(e) = search_in_file(keywords, file_path, noshow, maxsize, writer) {
+        if let Err(e) = search_in_file(
+            keywords,
+            file_path,
+            noshow,
+            maxsize,
+            writer,
+            keyword_counts, // Passer le compteur ici
+        ) {
             if !noshow {
                 eprintln!("Error with file {}: {}", file_path.display(), e);
             }
         }
     }
 }
+
