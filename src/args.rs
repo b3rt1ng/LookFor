@@ -10,7 +10,7 @@ pub struct Args {
     pub find: String,
 
     /// Directory or file to search in
-    #[clap(short = 'p', long = "path")]
+    #[clap(short = 'p', long = "path", default_value = ".")]
     pub path: PathBuf,
 
     /// Do not display errors for unreadable files
