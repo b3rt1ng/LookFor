@@ -124,7 +124,8 @@ pub fn search_in_directory(
     noshow: bool,
     maxsize: usize,
     writer: &mut MultiWriter,
-    keyword_counts: &mut HashMap<String, usize>, // Nouveau paramètre
+    keyword_counts: &mut HashMap<String, usize>,
+    omit_extensions: &[String], // New parameter
 ) {
     for entry in WalkDir::new(dir_path)
         .into_iter()
@@ -132,13 +133,29 @@ pub fn search_in_directory(
         .filter(|e| e.file_type().is_file())
     {
         let file_path = entry.path();
+
+        // Skip files with omitted extensions
+        if let Some(extension) = file_path.extension() {
+            if let Some(ext_str) = extension.to_str() {
+                if omit_extensions.contains(&ext_str.to_lowercase()) {
+                    if !noshow {
+                        eprintln!(
+                            "Skipping file with omitted extension: {}",
+                            file_path.display()
+                        );
+                    }
+                    continue;
+                }
+            }
+        }
+
         if let Err(e) = search_in_file(
             keywords,
             file_path,
             noshow,
             maxsize,
             writer,
-            keyword_counts, // Passer le compteur ici
+            keyword_counts,
         ) {
             if !noshow {
                 eprintln!("Error with file {}: {}", file_path.display(), e);
@@ -146,4 +163,3 @@ pub fn search_in_directory(
         }
     }
 }
-
