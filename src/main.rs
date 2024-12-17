@@ -11,8 +11,10 @@ use std::io::Write;
 use clap::Parser;
 use std::collections::HashMap;
 use colored::*;
+use std::time::Instant;
 
 fn main() {
+    let start_time = Instant::now();
     let args = Args::parse();
 
     let mut multi_writer = MultiWriter::new();
@@ -24,8 +26,15 @@ fn main() {
     }
 
     let keywords: Vec<String> = args.find.split(',').map(String::from).collect();
+    
+    // Get omitted extensions and normalize them to lowercase
+    let omit_extensions: Vec<String> = args
+        .omit
+        .unwrap_or_default()
+        .into_iter()
+        .map(|ext| ext.to_lowercase())
+        .collect();
 
-    // Compteur pour suivre les occurrences
     let mut keyword_counts: HashMap<String, usize> = keywords
         .iter()
         .map(|keyword| (keyword.clone(), 0))
@@ -45,6 +54,7 @@ fn main() {
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
+            &omit_extensions, // Pass omitted extensions here
         );
     } else if args.path.is_file() {
         writeln!(
@@ -80,4 +90,22 @@ fn main() {
         )
         .unwrap();
     }
+
+    let elapsed = start_time.elapsed();
+    let hours = elapsed.as_secs() / 3600;
+    let minutes = (elapsed.as_secs() % 3600) / 60;
+    let seconds = elapsed.as_secs() % 60;
+    let milliseconds = elapsed.subsec_millis();
+
+    let elapsed_str = if hours > 0 {
+        format!("{:02}h:{:02}m:{:02}s.{:03}ms", hours, minutes, seconds, milliseconds)
+    } else if minutes > 0 {
+        format!("{:02}m:{:02}s.{:03}ms", minutes, seconds, milliseconds)
+    } else if seconds > 0 {
+        format!("{:02}s.{:03}ms", seconds, milliseconds)
+    } else {
+        format!("{}ms", milliseconds)
+    };
+
+    writeln!(&mut multi_writer, "\nElapsed time: {}", elapsed_str).unwrap();
 }
