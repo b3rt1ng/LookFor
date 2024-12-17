@@ -20,7 +20,7 @@ To compile and use `lookfor`, you need to have Rust installed.
 
 2. Try it
    ```bash
-   cargo run -- "bash" /path/to/look/for
+   cargo run -- -f "bash"
    ```
 3. Make it runable
    ```bash
