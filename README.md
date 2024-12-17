@@ -34,12 +34,12 @@ To compile and use `lookfor`, you need to have Rust installed.
 # Usage
 ```
   -f, --find <FIND>        Keywords to search for (comma-separated)
-  -p, --path <PATH>        Directory or file to search in
+  -p, --path <PATH>        Directory or file to search in [default: .]
   -n, --noshow             Do not display errors for unreadable files
   -m, --maxsize <MAXSIZE>  Maximum file size to analyze in MB [default: 0]
   -o, --output <OUTPUT>    Output file for results
+  -e, --omit <OMIT>        Omit certain file types (extensions) separated by commas
   -h, --help               Print help
-  -V, --version            Print version
 ```
 ### Examples:
 ```bash
