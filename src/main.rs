@@ -12,6 +12,7 @@ use clap::Parser;
 use std::collections::HashMap;
 use colored::*;
 use std::time::Instant;
+use regex::Regex;
 
 fn main() {
     let start_time = Instant::now();
@@ -27,13 +28,17 @@ fn main() {
 
     let keywords: Vec<String> = args.find.split(',').map(String::from).collect();
     
-    // Get omitted extensions and normalize them to lowercase
     let omit_extensions: Vec<String> = args
         .omit
         .unwrap_or_default()
         .into_iter()
         .map(|ext| ext.to_lowercase())
         .collect();
+
+    let regex = args
+        .regex
+        .as_ref()
+        .and_then(|pattern| Regex::new(pattern).ok());
 
     let mut keyword_counts: HashMap<String, usize> = keywords
         .iter()
@@ -54,7 +59,8 @@ fn main() {
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
-            &omit_extensions, // Pass omitted extensions here
+            &omit_extensions,
+            regex.as_ref(), // Pass regex
         );
     } else if args.path.is_file() {
         writeln!(
@@ -70,12 +76,14 @@ fn main() {
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
+            regex.as_ref(), // Pass regex
         ) {
             if !args.noshow {
                 eprintln!("Error with the file {}: {}", args.path.display(), e);
             }
         }
     }
+
 
     // Affichage des résultats du compteur
     writeln!(&mut multi_writer, "\nSummary:").unwrap();

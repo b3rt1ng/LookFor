@@ -15,7 +15,8 @@ pub fn search_in_file(
     noshow: bool,
     maxsize: usize,
     writer: &mut MultiWriter,
-    keyword_counts: &mut HashMap<String, usize>, // Nouveau paramètre
+    keyword_counts: &mut HashMap<String, usize>,
+    regex: Option<&Regex>, // New parameter
 ) -> io::Result<()> {
     let metadata = fs::metadata(file_path)?;
     let file_size_mb = metadata.len() as usize / (1024 * 1024);
@@ -39,20 +40,29 @@ pub fn search_in_file(
     for (line_num, line_result) in reader.lines().enumerate() {
         match line_result {
             Ok(line) => {
+                // Check if keywords or regex match
+                let mut matches = Vec::new();
+
                 if let Some(highlighted) = highlight_keywords(&line, keywords) {
-                    // Incrémenter le compteur pour chaque mot trouvé
-                    for keyword in keywords {
-                        if line.contains(keyword) {
-                            *keyword_counts.entry(keyword.clone()).or_insert(0) += 1;
+                    matches.push(highlighted);
+                }
+
+                if let Some(regex) = regex {
+                    for cap in regex.find_iter(&line) {
+                        matches.push(format!("{}", cap.as_str().green().bold()));
+                        if let Some(count) = keyword_counts.get_mut(cap.as_str()) {
+                            *count += 1;
                         }
                     }
+                }
 
+                if !matches.is_empty() {
                     writeln!(
                         writer,
                         "{}:{} {}",
                         file_path.display().to_string().blue().bold(),
                         (line_num + 1).to_string().yellow().bold(),
-                        highlighted
+                        matches.join(", ")
                     )
                     .unwrap();
                     found_any = true;
@@ -65,7 +75,7 @@ pub fn search_in_file(
                         file_path.display()
                     );
                 }
-                found_any |= search_binary_content(file_path, keywords, writer, keyword_counts);
+                found_any |= search_binary_content(file_path, keywords, regex, writer);
                 break;
             }
         }
@@ -81,8 +91,8 @@ pub fn search_in_file(
 fn search_binary_content(
     file_path: &Path,
     keywords: &[String],
+    regex: Option<&Regex>, // New parameter
     writer: &mut dyn Write,
-    keyword_counts: &mut HashMap<String, usize>, // Nouveau paramètre
 ) -> bool {
     let content = match fs::read(file_path) {
         Ok(c) => c,
@@ -96,19 +106,25 @@ fn search_binary_content(
 
     for sequence in printable_regex.find_iter(&content_str) {
         let line = sequence.as_str();
-        if let Some(highlighted) = highlight_keywords(line, keywords) {
-            // Incrémenter le compteur pour chaque mot trouvé
-            for keyword in keywords {
-                if line.contains(keyword) {
-                    *keyword_counts.entry(keyword.clone()).or_insert(0) += 1;
-                }
-            }
 
+        let mut matches = Vec::new();
+
+        if let Some(highlighted) = highlight_keywords(line, keywords) {
+            matches.push(highlighted);
+        }
+
+        if let Some(regex) = regex {
+            for cap in regex.find_iter(line) {
+                matches.push(format!("{}", cap.as_str().green().bold()));
+            }
+        }
+
+        if !matches.is_empty() {
             writeln!(
                 writer,
                 "{}: {}",
                 file_path.display().to_string().blue().bold(),
-                highlighted
+                matches.join(", ")
             )
             .unwrap();
             found_any = true;
@@ -125,7 +141,8 @@ pub fn search_in_directory(
     maxsize: usize,
     writer: &mut MultiWriter,
     keyword_counts: &mut HashMap<String, usize>,
-    omit_extensions: &[String], // New parameter
+    omit_extensions: &[String],
+    regex: Option<&Regex>, // New parameter
 ) {
     for entry in WalkDir::new(dir_path)
         .into_iter()
@@ -134,7 +151,6 @@ pub fn search_in_directory(
     {
         let file_path = entry.path();
 
-        // Skip files with omitted extensions
         if let Some(extension) = file_path.extension() {
             if let Some(ext_str) = extension.to_str() {
                 if omit_extensions.contains(&ext_str.to_lowercase()) {
@@ -156,6 +172,7 @@ pub fn search_in_directory(
             maxsize,
             writer,
             keyword_counts,
+            regex, // Pass regex here
         ) {
             if !noshow {
                 eprintln!("Error with file {}: {}", file_path.display(), e);

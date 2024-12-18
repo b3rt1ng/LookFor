@@ -28,4 +28,8 @@ pub struct Args {
     /// Omit certain file types (extensions) separated by commas
     #[arg(short = 'e', long = "omit", value_delimiter = ',')]
     pub omit: Option<Vec<String>>,
+
+    /// Regex pattern to match words
+    #[arg(short = 'r', long = "regex")]
+    pub regex: Option<String>,
 }
