@@ -7,6 +7,7 @@
 - Search recursively in directories
 - Highlight search results with colors
 - Handle files that may not be readable (with an option to hide error messages, --noshow to hide those)
+- You can use the -r argument to find an additional regex
 
 ## Installation
 
