@@ -16,7 +16,8 @@ pub fn search_in_file(
     maxsize: usize,
     writer: &mut MultiWriter,
     keyword_counts: &mut HashMap<String, usize>,
-    regex: Option<&Regex>, // New parameter
+    regex_count: &mut usize, // Counter for regex matches
+    regex: Option<&Regex>,   // Regex pattern
 ) -> io::Result<()> {
     let metadata = fs::metadata(file_path)?;
     let file_size_mb = metadata.len() as usize / (1024 * 1024);
@@ -40,19 +41,26 @@ pub fn search_in_file(
     for (line_num, line_result) in reader.lines().enumerate() {
         match line_result {
             Ok(line) => {
-                // Check if keywords or regex match
+                // Collect matches for keywords and regex
                 let mut matches = Vec::new();
 
+                // Highlight and count keyword matches
                 if let Some(highlighted) = highlight_keywords(&line, keywords) {
+                    for keyword in keywords {
+                        if line.contains(keyword) {
+                            if let Some(count) = keyword_counts.get_mut(keyword) {
+                                *count += 1;
+                            }
+                        }
+                    }
                     matches.push(highlighted);
                 }
 
+                // Highlight and count regex matches
                 if let Some(regex) = regex {
                     for cap in regex.find_iter(&line) {
                         matches.push(format!("{}", cap.as_str().green().bold()));
-                        if let Some(count) = keyword_counts.get_mut(cap.as_str()) {
-                            *count += 1;
-                        }
+                        *regex_count += 1;
                     }
                 }
 
@@ -75,7 +83,7 @@ pub fn search_in_file(
                         file_path.display()
                     );
                 }
-                found_any |= search_binary_content(file_path, keywords, regex, writer);
+                found_any |= search_binary_content(file_path, keywords, regex, regex_count, writer);
                 break;
             }
         }
@@ -91,7 +99,8 @@ pub fn search_in_file(
 fn search_binary_content(
     file_path: &Path,
     keywords: &[String],
-    regex: Option<&Regex>, // New parameter
+    regex: Option<&Regex>,
+    regex_count: &mut usize, // Counter for regex matches
     writer: &mut dyn Write,
 ) -> bool {
     let content = match fs::read(file_path) {
@@ -109,13 +118,16 @@ fn search_binary_content(
 
         let mut matches = Vec::new();
 
+        // Highlight and count keyword matches
         if let Some(highlighted) = highlight_keywords(line, keywords) {
             matches.push(highlighted);
         }
 
+        // Highlight and count regex matches
         if let Some(regex) = regex {
             for cap in regex.find_iter(line) {
                 matches.push(format!("{}", cap.as_str().green().bold()));
+                *regex_count += 1;
             }
         }
 
@@ -141,8 +153,9 @@ pub fn search_in_directory(
     maxsize: usize,
     writer: &mut MultiWriter,
     keyword_counts: &mut HashMap<String, usize>,
+    regex_count: &mut usize, // Counter for regex matches
     omit_extensions: &[String],
-    regex: Option<&Regex>, // New parameter
+    regex: Option<&Regex>, // Regex pattern
 ) {
     for entry in WalkDir::new(dir_path)
         .into_iter()
@@ -172,7 +185,8 @@ pub fn search_in_directory(
             maxsize,
             writer,
             keyword_counts,
-            regex, // Pass regex here
+            regex_count, // Pass regex match counter
+            regex,       // Pass regex
         ) {
             if !noshow {
                 eprintln!("Error with file {}: {}", file_path.display(), e);

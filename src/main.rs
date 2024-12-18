@@ -27,7 +27,7 @@ fn main() {
     }
 
     let keywords: Vec<String> = args.find.split(',').map(String::from).collect();
-    
+
     let omit_extensions: Vec<String> = args
         .omit
         .unwrap_or_default()
@@ -45,6 +45,8 @@ fn main() {
         .map(|keyword| (keyword.clone(), 0))
         .collect();
 
+    let mut regex_count = 0;
+
     if args.path.is_dir() {
         writeln!(
             &mut multi_writer,
@@ -59,8 +61,9 @@ fn main() {
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
+            &mut regex_count,
             &omit_extensions,
-            regex.as_ref(), // Pass regex
+            regex.as_ref(),
         );
     } else if args.path.is_file() {
         writeln!(
@@ -76,7 +79,8 @@ fn main() {
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
-            regex.as_ref(), // Pass regex
+            &mut regex_count,
+            regex.as_ref(),
         ) {
             if !args.noshow {
                 eprintln!("Error with the file {}: {}", args.path.display(), e);
@@ -84,8 +88,7 @@ fn main() {
         }
     }
 
-
-    // Affichage des résultats du compteur
+    // Résumé des résultats
     writeln!(&mut multi_writer, "\nSummary:").unwrap();
     for (keyword, count) in &keyword_counts {
         let times_str = if *count > 1 { "times" } else { "time" };
@@ -99,6 +102,19 @@ fn main() {
         .unwrap();
     }
 
+    if let Some(regex_pattern) = args.regex.as_ref() {
+        let times_str = if regex_count > 1 { "matches" } else { "match" };
+        writeln!(
+            &mut multi_writer,
+            "Regex {}: {} {}",
+            regex_pattern.red().bold(),
+            regex_count.to_string().green().bold(),
+            times_str
+        )
+        .unwrap();
+    }
+
+    // Temps écoulé
     let elapsed = start_time.elapsed();
     let hours = elapsed.as_secs() / 3600;
     let minutes = (elapsed.as_secs() % 3600) / 60;
