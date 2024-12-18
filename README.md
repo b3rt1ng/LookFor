@@ -43,8 +43,12 @@ To compile and use `lookfor`, you need to have Rust installed.
 ```
 ### Examples:
 ```bash
-lookfor -f bash,file -p . -m 200
+lookfor -f bash,file -m 200
 # search for the words file and bash within the current directory and with a max file size of 200MO
+```
+```bash
+lookfor -f bash,file -r "\b(?:\d{1,3}\.){3}\d{1,3}\b"
+# search for the words file and bash within the current as well as anything that looks like an IP
 ```
 
 ## TODO
