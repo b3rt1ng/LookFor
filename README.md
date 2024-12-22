@@ -40,6 +40,7 @@ To compile and use `lookfor`, you need to have Rust installed.
   -m, --maxsize <MAXSIZE>  Maximum file size to analyze in MB [default: 0]
   -o, --output <OUTPUT>    Output file for results
   -e, --omit <OMIT>        Omit certain file types (extensions) separated by commas
+  -r, --regex <REGEX>      Regex pattern to match words
   -h, --help               Print help
 ```
 ### Examples:
