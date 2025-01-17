@@ -45,6 +45,10 @@ To compile and use `lookfor`, you need to have Rust installed.
 ```
 ### Examples:
 ```bash
+lookfor word
+# most simple way to use it, it will look for "word" in your current subdirectories 
+```
+```bash
 lookfor -f bash,file -m 200
 # search for the words file and bash within the current directory and with a max file size of 200MO
 ```
