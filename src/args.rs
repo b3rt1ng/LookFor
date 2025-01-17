@@ -29,9 +29,9 @@ pub struct Args {
     #[clap(short = 'e', long = "omit", value_delimiter = ',')]
     pub omit: Option<Vec<String>>,
 
-    /// Regex pattern to match words
-    #[clap(short = 'r', long = "regex")]
-    pub regex: Option<String>,
+    /// Regex patterns to match words
+    #[arg(short = 'r', long = "regex", value_delimiter = ',')]
+    pub regex: Option<Vec<String>>,
 
     /// Positional argument for the search keyword
     #[clap()]

@@ -16,8 +16,8 @@ pub fn search_in_file(
     maxsize: usize,
     writer: &mut MultiWriter,
     keyword_counts: &mut HashMap<String, usize>,
-    regex_count: &mut usize, // Counter for regex matches
-    regex: Option<&Regex>,   // Regex pattern
+    regex_counts: &mut Vec<usize>, // Liste des compteurs pour chaque regex
+    regex_list: &[Regex],          // Liste des regex
 ) -> io::Result<()> {
     let metadata = fs::metadata(file_path)?;
     let file_size_mb = metadata.len() as usize / (1024 * 1024);
@@ -41,11 +41,11 @@ pub fn search_in_file(
     for (line_num, line_result) in reader.lines().enumerate() {
         match line_result {
             Ok(line) => {
-                // Collect matches for keywords and regex
                 let mut matches = Vec::new();
 
-                // Highlight and count keyword matches
+                // Cherche les mots-clés
                 if let Some(highlighted) = highlight_keywords(&line, keywords) {
+                    matches.push(highlighted);
                     for keyword in keywords {
                         if line.contains(keyword) {
                             if let Some(count) = keyword_counts.get_mut(keyword) {
@@ -53,14 +53,13 @@ pub fn search_in_file(
                             }
                         }
                     }
-                    matches.push(highlighted);
                 }
 
-                // Highlight and count regex matches
-                if let Some(regex) = regex {
+                // Cherche les correspondances avec les regex
+                for (i, regex) in regex_list.iter().enumerate() {
                     for cap in regex.find_iter(&line) {
                         matches.push(format!("{}", cap.as_str().green().bold()));
-                        *regex_count += 1;
+                        regex_counts[i] += 1;
                     }
                 }
 
@@ -83,7 +82,14 @@ pub fn search_in_file(
                         file_path.display()
                     );
                 }
-                found_any |= search_binary_content(file_path, keywords, regex, regex_count, writer);
+                found_any |= search_binary_content(
+                    file_path,
+                    keywords,
+                    regex_list,
+                    regex_counts,
+                    writer,
+                    keyword_counts,
+                );
                 break;
             }
         }
@@ -99,35 +105,46 @@ pub fn search_in_file(
 fn search_binary_content(
     file_path: &Path,
     keywords: &[String],
-    regex: Option<&Regex>,
-    regex_count: &mut usize, // Counter for regex matches
+    regex_list: &[Regex],        // Liste des expressions régulières
+    regex_counts: &mut Vec<usize>, // Liste des compteurs pour chaque regex
     writer: &mut dyn Write,
+    keyword_counts: &mut HashMap<String, usize>,
 ) -> bool {
     let content = match fs::read(file_path) {
         Ok(c) => c,
-        Err(_) => return false,
+        Err(e) => {
+            eprintln!(
+                "Error reading binary file {}: {}",
+                file_path.display(),
+                e
+            );
+            return false;
+        }
     };
 
-    let printable_regex = Regex::new(r"[ -~]{4,}").unwrap();
-    let content_str = String::from_utf8_lossy(&content);
+    let printable_regex = Regex::new(r"[ -~]{4,}").unwrap(); // Chaînes imprimables de 4 caractères ou plus
+    let content_str = String::from_utf8_lossy(&content); // Traite les octets binaires comme texte partiel
 
     let mut found_any = false;
 
     for sequence in printable_regex.find_iter(&content_str) {
         let line = sequence.as_str();
-
         let mut matches = Vec::new();
 
-        // Highlight and count keyword matches
+        // Cherche les mots-clés
         if let Some(highlighted) = highlight_keywords(line, keywords) {
             matches.push(highlighted);
+            for keyword in keywords {
+                let count = line.matches(keyword).count();
+                *keyword_counts.entry(keyword.clone()).or_insert(0) += count;
+            }
         }
 
-        // Highlight and count regex matches
-        if let Some(regex) = regex {
+        // Cherche les correspondances avec les regex
+        for (i, regex) in regex_list.iter().enumerate() {
             for cap in regex.find_iter(line) {
                 matches.push(format!("{}", cap.as_str().green().bold()));
-                *regex_count += 1;
+                regex_counts[i] += 1;
             }
         }
 
@@ -146,6 +163,7 @@ fn search_binary_content(
     found_any
 }
 
+
 pub fn search_in_directory(
     keywords: &[String],
     dir_path: &Path,
@@ -153,9 +171,8 @@ pub fn search_in_directory(
     maxsize: usize,
     writer: &mut MultiWriter,
     keyword_counts: &mut HashMap<String, usize>,
-    regex_count: &mut usize, // Counter for regex matches
-    omit_extensions: &[String],
-    regex: Option<&Regex>, // Regex pattern
+    regex_counts: &mut Vec<usize>,  // Liste des compteurs pour chaque regex
+    regex_list: &[Regex],          // Liste des regex
 ) {
     for entry in WalkDir::new(dir_path)
         .into_iter()
@@ -166,7 +183,7 @@ pub fn search_in_directory(
 
         if let Some(extension) = file_path.extension() {
             if let Some(ext_str) = extension.to_str() {
-                if omit_extensions.contains(&ext_str.to_lowercase()) {
+                if ext_str.eq_ignore_ascii_case("log") || ext_str.eq_ignore_ascii_case("tmp") {
                     if !noshow {
                         eprintln!(
                             "Skipping file with omitted extension: {}",
@@ -185,8 +202,8 @@ pub fn search_in_directory(
             maxsize,
             writer,
             keyword_counts,
-            regex_count, // Pass regex match counter
-            regex,       // Pass regex
+            regex_counts, // Passe les compteurs pour chaque regex
+            regex_list,   // Passe la liste des regex
         ) {
             if !noshow {
                 eprintln!("Error with file {}: {}", file_path.display(), e);

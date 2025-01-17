@@ -18,13 +18,21 @@ fn main() {
     let start_time = Instant::now();
     let args = Args::parse();
 
-    // Prioriser l'argument `-f` ou utiliser le `positional_find` comme fallback
+    // Prioriser l'argument `-f` ou utiliser `positional_find` comme fallback
     let find_value = args.find.or(args.positional_find).unwrap_or_else(|| {
         eprintln!("Error: No search keyword provided.");
         std::process::exit(1);
     });
 
     let keywords: Vec<String> = find_value.split(',').map(String::from).collect();
+
+    let regex_list: Vec<Regex> = args
+        .regex
+        .as_ref() // Emprunte la référence au lieu de déplacer
+        .unwrap_or(&Vec::new()) // Si `None`, retourne une référence vers une liste vide
+        .iter()
+        .filter_map(|pattern| Regex::new(pattern).ok())
+        .collect();
 
     let mut multi_writer = MultiWriter::new();
     multi_writer.add(io::stdout());
@@ -33,32 +41,16 @@ fn main() {
         let file = std::fs::File::create(output_path).expect("Unable to create output file");
         multi_writer.add(file);
     }
-    let omit_extensions: Vec<String> = args
-        .omit
-        .unwrap_or_default()
-        .into_iter()
-        .map(|ext| ext.to_lowercase())
-        .collect();
-
-    let regex = args
-        .regex
-        .as_ref()
-        .and_then(|pattern| Regex::new(pattern).ok());
 
     let mut keyword_counts: HashMap<String, usize> = keywords
         .iter()
         .map(|keyword| (keyword.clone(), 0))
         .collect();
-    
-    let mut regex_count = 0;
 
+    let mut regex_counts: Vec<usize> = vec![0; regex_list.len()];
+
+    // Le reste du traitement pour les fichiers et dossiers
     if args.path.is_dir() {
-        writeln!(
-            &mut multi_writer,
-            "Searching in directory: {}",
-            args.path.display()
-        )
-        .unwrap();
         search_in_directory(
             &keywords,
             &args.path,
@@ -66,58 +58,49 @@ fn main() {
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
-            &mut regex_count,
-            &omit_extensions,
-            regex.as_ref(),
+            &mut regex_counts,
+            &regex_list,
         );
     } else if args.path.is_file() {
-        writeln!(
-            &mut multi_writer,
-            "Searching in file: {}",
-            args.path.display()
-        )
-        .unwrap();
-        if let Err(e) = search_in_file(
+        search_in_file(
             &keywords,
             &args.path,
             args.noshow,
             args.maxsize,
             &mut multi_writer,
             &mut keyword_counts,
-            &mut regex_count,
-            regex.as_ref(),
-        ) {
+            &mut regex_counts,
+            &regex_list,
+        )
+        .unwrap_or_else(|e| {
             if !args.noshow {
                 eprintln!("Error with the file {}: {}", args.path.display(), e);
             }
-        }
+        });
     }
 
-    // Résumé des résultats
+    // Afficher le résumé des résultats
     writeln!(&mut multi_writer, "\nSummary:").unwrap();
     for (keyword, count) in &keyword_counts {
-        let times_str = if *count > 1 { "times" } else { "time" };
         writeln!(
             &mut multi_writer,
-            "found {}: {} {}",
+            "Keyword '{}' found {} times",
             keyword.red().bold(),
             count.to_string().green().bold(),
-            times_str
         )
         .unwrap();
     }
 
-    if let Some(regex_pattern) = args.regex.as_ref() {
-        let times_str = if regex_count > 1 { "matches" } else { "match" };
+    for (i, count) in regex_counts.iter().enumerate() {
         writeln!(
             &mut multi_writer,
-            "Regex {}: {} {}",
-            regex_pattern.red().bold(),
-            regex_count.to_string().green().bold(),
-            times_str
+            "Regex pattern '{}' matched {} times",
+            args.regex.as_ref().unwrap()[i].red().bold(),
+            count.to_string().green().bold(),
         )
         .unwrap();
     }
+    
 
     // Temps écoulé
     let elapsed = start_time.elapsed();
