@@ -18,6 +18,14 @@ fn main() {
     let start_time = Instant::now();
     let args = Args::parse();
 
+    // Prioriser l'argument `-f` ou utiliser le `positional_find` comme fallback
+    let find_value = args.find.or(args.positional_find).unwrap_or_else(|| {
+        eprintln!("Error: No search keyword provided.");
+        std::process::exit(1);
+    });
+
+    let keywords: Vec<String> = find_value.split(',').map(String::from).collect();
+
     let mut multi_writer = MultiWriter::new();
     multi_writer.add(io::stdout());
 
@@ -25,9 +33,6 @@ fn main() {
         let file = std::fs::File::create(output_path).expect("Unable to create output file");
         multi_writer.add(file);
     }
-
-    let keywords: Vec<String> = args.find.split(',').map(String::from).collect();
-
     let omit_extensions: Vec<String> = args
         .omit
         .unwrap_or_default()
@@ -44,7 +49,7 @@ fn main() {
         .iter()
         .map(|keyword| (keyword.clone(), 0))
         .collect();
-
+    
     let mut regex_count = 0;
 
     if args.path.is_dir() {

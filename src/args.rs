@@ -7,7 +7,7 @@ use std::path::PathBuf;
 pub struct Args {
     /// Keywords to search for (comma-separated)
     #[clap(short = 'f', long = "find")]
-    pub find: String,
+    pub find: Option<String>, // Rendez cet argument optionnel
 
     /// Directory or file to search in
     #[clap(short = 'p', long = "path", default_value = ".")]
@@ -26,10 +26,14 @@ pub struct Args {
     pub output: Option<PathBuf>,
 
     /// Omit certain file types (extensions) separated by commas
-    #[arg(short = 'e', long = "omit", value_delimiter = ',')]
+    #[clap(short = 'e', long = "omit", value_delimiter = ',')]
     pub omit: Option<Vec<String>>,
 
     /// Regex pattern to match words
-    #[arg(short = 'r', long = "regex")]
+    #[clap(short = 'r', long = "regex")]
     pub regex: Option<String>,
+
+    /// Positional argument for the search keyword
+    #[clap()]
+    pub positional_find: Option<String>,
 }
