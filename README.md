@@ -37,6 +37,8 @@ To compile and use `lookfor`, you need to have Rust installed.
    ```
    > run it !
 
+To remove it, simply delete ```/usr/local/bin/LookFor```
+
 # Usage
 ```
   -f, --find <FIND>        Keywords to search for (comma-separated)
