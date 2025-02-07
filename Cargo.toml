@@ -1,0 +1,13 @@
+[package]
+name = "lookfor"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A tool to search for keywords in files and directories"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+colored = "2.0"
+walkdir = "2.4"
+regex = "1.9"
+ctrlc = "3.4"
