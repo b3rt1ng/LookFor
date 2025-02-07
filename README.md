@@ -26,11 +26,16 @@ To compile and use `lookfor`, you need to have Rust installed.
 3. Make it runable
    ```bash
    cargo build --release
+   ```
+   > compile the project
+   ```bash
    sudo cp target/release/lookfor /usr/local/bin/
-
-   #run it
+   ```
+   > move the executable
+   ```bash
    lookfor -f bash -p . --noshow
    ```
+   > run it !
 
 # Usage
 ```
@@ -56,6 +61,9 @@ lookfor -f bash,file -m 200
 lookfor -f bash,file -r "\b(?:\d{1,3}\.){3}\d{1,3}\b"
 # search for the words file and bash within the current as well as anything that looks like an IP
 ```
-
+```bash
+lookfor -f ".db" -m 10 --show -e .pdf -o resume.txt
+# Search for .db mentioned in any file that's less than 10MB and that's not a pdf while showing full info of the process and will dump the found ontes in resume.txt
+```
 ## TODO
 - file type handling (such as csr, github logs etc...)
